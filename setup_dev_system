@@ -1,0 +1,275 @@
+#!/bin/bash
+
+# Prints the help menu
+usage() {
+    cat <<EOF
+setup_dev_system
+
+NAME
+        setup_dev_system - Configures a new install to conform to FBNC's development needs
+
+SYNOPSIS
+        setup_dev_system <flag>
+
+DESCRIPTION
+        This tool installs the EPEL repo, Cassandra (2.2.3), Cassandra's dependencies, Git (2.8.0), Golang's developer toolset,
+        and ExtJS. Additionally this sets up the Go dev directory, generates your Github ssh keys, creates Git aliases, pulls
+        down Novetta's core repos (Common, kerbproxy, etc.)
+
+        -h
+               prints this help screen
+
+        -c
+               checks the system (run prior to installing)
+
+        -i       
+               installs and configures everything
+
+AUTHOR
+        Another handy tool by James Stoup        
+EOF
+    
+    exit 1
+}
+
+# Checks the status of the system
+checkStatus() {
+    ### Make sure this is run properly
+    if [ "$EUID" -ne 0 ]; then
+	echo "please run me with sudo"
+    fi
+
+    my_cmd=`sudo grep ^"$USER" /etc/sudoers 2> /dev/null`
+    
+    if [[ ! "$my_cmd" ]] ; then
+	echo "Sudo is not setup for this user."
+        echo "To enable sudo for user $USER run visudo and"
+	echo "add this line at the end of the file:"
+        echo "<your_user_name_here> ALL=(ALL) NOPASSWD: ALL"
+    else
+	# So now that we know we have access to the file, let's see if it is has me in there
+	my_cmd=`sudo grep ^"$USER" /etc/sudoers | grep NOPASSWD`
+	if [[ ! "$my_cmd" ]]; then
+	    echo "Looks like you have sudo access and are good to go"
+	fi
+    fi
+    
+
+    if [ "$SUDO_NOT_FOUND" = true ]; then
+        echo "First enable sudo for user $USER by running visudo and adding this line at the end of the file:"
+        echo "<your_user_name_here> ALL=(ALL) NOPASSWD: ALL"
+        echo "Then come back and run this script with the install flag"
+    fi
+
+    exit 1
+}
+
+# Does all the heavy lifting of installing stuff
+installAndConfigure() {
+    clear
+
+    ### Make sure this is run properly
+    if [ "$EUID" -ne 0 ]; then
+	echo "please run me with sudo"
+    fi
+
+    ### Check to make sure we aren't running this as root
+    WHO_AM_I=`who am i | awk '{print $1}'`
+    if [[ "$WHO_AM_I" = "root" ]]; then
+	echo "WARNING! You can't run this AS the root user!" 
+	echo "This should be installed using sudo because this script"
+	echo "install into the user's home directory and you do not "
+	echo "this installed in /root. Please run this again using sudo."
+	exit 1
+    fi
+
+    ### Welcome
+    echo "##################################################"
+    echo "### Setting up new development environment"
+    echo "##################################################"
+    echo "Welcome to the developers setup script. This script should configure"
+    echo "a new machine for our basic development layout"
+    echo ""
+
+
+    ### Add some repos
+    echo "##################################################"
+    echo "### Installing the EPEL release repo"
+    echo "##################################################"
+    sudo yum install -y epel-release
+    echo ""
+
+    ### Install Cassandra
+    echo "##################################################"
+    echo "### Installing Cassandra 2.2.3"
+    echo "##################################################"
+    EXCLUDE_STR="exclude=cassandra22-2.2.4* dsc22-2.2.4* cassandra22-tools-2.2.4* cassandra22-2.2.5* dsc22-2.2.5* cassandra22-tools-2.2.5*" 
+    #sudo echo $EXCLUDE_STR >> /etc/yum.conf
+    sudo yum install -y cassandra22.noarch cassandra22-tools.noarch
+    echo ""
+
+    ### Dir setup
+    echo "##################################################"
+    echo "### Setting up the dev directory and envs"
+    echo "##################################################"
+    DEV_DIR_NAME="dev"
+    mkdir ~/$DEV_DIR_NAME
+    cd  ~/$DEV_DIR_NAME
+    mkdir bin pkg src
+    echo "# Go Environment Variables" >> ~/.bashrc
+    echo "export GOPATH=$HOME/$DEV_DIR_NAME" >> ~/.bashrc
+    echo "export GOBIN=$GOPATH/bin" >> ~/.bashrc
+    echo "export GOROOT=/usr/local/go" >> ~/.bashrc
+    echo "" >> ~/.bashrc
+    echo "export PATH=$PATH:$GOBIN" >> ~/.bashrc
+    echo "New go development directory created at: ~/$DEV_DIR_NAME"
+    echo ""
+
+
+    ### Install Git
+    echo "##################################################"
+    echo "### Installing Git"
+    echo "##################################################"
+    sudo yum install -y curl-devel expat-devel gettext-devel openssl-devel zlib-devel gcc perl-devel
+    sudo yum install -y asciidoc xmlto docbook2X
+    sudo ln -s /usr/bin/db2x_docbook2texi /usr/bin/docbook2x-texi
+    sudo yum install -y autoconf
+    GIT_VERSION_TO_INSTALL="2.8.0"
+    MY_CUR_DIR=`pwd`
+    cd ~/Downloads
+    wget https://github.com/git/git/archive/v$GIT_VERSION_TO_INSTALL.tar.gz
+    tar -xzf v$GIT_VERSION_TO_INSTALL.tar.gz
+    cd git-$GIT_VERSION_TO_INSTALL
+    make configure
+    make all doc info
+    sudo make install install-doc install-html install-info
+    cd ../
+    rm -rf git-$GIT_VERSION_TO_INSTALL*
+    rm -rf v$GIT_VERSION_TO_INSTALL.tar.gz
+    cd $MY_CUR_DIR
+
+
+
+    ### Add your ssh key to github
+    echo "##################################################"
+    echo "### Generating an SSH Key for Github"
+    echo "##################################################"
+    echo ""
+    echo -n "Please enter your email address > "
+    read USER_EMAIL
+
+    while true; do
+	echo "You entered: $USER_EMAIL"
+	read -p "Is this correct? " yn
+	case $yn in 
+	    [Yy]* ) break;;
+	    [Nn]* ) echo -n "Please enter your email address > " ; read USER_EMAIL;;
+	    * ) echo "Please answer yes or no.";;
+	esac
+    done
+
+    ssh-keygen -t rsa -b 4096 -C $USER_EMAIL
+    eval $(ssh-agent -s)
+    ssh-add ~/.ssh/id_rsa
+
+    echo "Be sure to visit https://github.com/settings/ssh to enter this ssh key."
+    echo "Failure to add this key to github will prevent git from working properly."
+    
+    git config --global user.name $USER_NAME
+    git config --global user.email $USER_EMAIL
+    git config --global core.editor emacs
+    git config --global core.autocrlf input
+    git config --global core.safecrlf true
+    git config --global core.excludesfile "~/.gitignore_global"
+    git config --global color.ui always
+    git config --global push.default simple
+    git config --global credential.helper "cache --timeout=36000"
+    git config --global url.ssh://git@github.com/.insteadOf https://github.com/
+    git config --global alias.co checkout
+    git config --global alias.stage add
+    git config --global alias.switch checkout
+    git config --global alias.unstage "reset HEAD"
+    git config --global alias.delete "branch -d"
+    GIT_LL_STR='log --pretty=format:"%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]" --decorate --numstat'
+    echo "        ll       = $GIT_LL_STR" >> ~/.gitconfig
+    GIT_LS_STR='log --pretty=format:"%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]" --decorate'
+    echo "        ls       = $GIT_LS_STR" >> ~/.gitconfig
+    GIT_LDR_STR='log --pretty=format:"%C(yellow)%h\\ %ad%Cred%d\\ %Creset%s%Cblue\\ [%cn]" --decorate --date=relative'
+    echo "        ldr      = $GIT_LDR_STR" >> ~/.gitconfig
+    GIT_LDS_STR='log --pretty=format:"%C(yellow)%h\\ %ad%Cred%d\\ %Creset%s%Cblue\\ [%cn]" --decorate --date=short'
+    echo "        lds      = $GIT_LDS_STR" >> ~/.gitconfig
+
+
+    ### Pull down the Novetta repos
+    echo "##################################################"
+    echo "### Pulling down the Novetta Repos"
+    echo "##################################################"
+    cd ~/$DEV_DIR_NAME
+    go get github.com/Novetta/KLE
+    cd ~/gocode/src/github.com/Novetta/KLE/
+    go get -u -f -v
+    go get github.com/Novetta/common
+    cd ~/gocode/src/github.com/Novetta/common
+    go get -u -f -v
+
+
+    ### Pull down go tools
+    echo "##################################################"
+    echo "### Pulling down the Golang Tools"
+    echo "##################################################"
+    cd ~/$DEV_DIR_NAME
+    go get golang.org/x/tools/cmd/...
+    cd $MY_CUR_DIR
+
+
+
+    ### Install JS/ExtJS
+
+
+    ### Install linters
+
+    exit 1
+}
+
+
+
+
+
+
+
+# If they just ran it blind, print the help
+if [[ -z "$1" ]]; then
+    usage
+fi
+
+# Parse the args
+while getopts ":hci" opt; do
+    case $opt in
+	h)
+	    usage
+	    ;;
+	c)
+	    echo "Checking status..." >&2
+	    check=true
+	    checkStatus
+	    ;;
+	i)
+	    echo "Installing..." >&2
+	    install=true
+	    installAndConfigure
+	    ;;
+	*)
+	    usage
+	    ;;
+    esac
+done
+
+# Check to make sure they didn't enter gibberish
+if [ "$check" = true ] || [ "$install" = true ] ; then
+    echo ""
+else
+    usage
+fi
+
+
+
