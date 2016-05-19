@@ -353,12 +353,12 @@ installAndConfigure() {
 	tar -xzf v$GIT_VERSION_TO_INSTALL.tar.gz
 	cd git-$GIT_VERSION_TO_INSTALL
 	make configure
-	make all #doc info
-	sudo make install 
-	sudo make install-doc install-html install-info
+	./configure --prefix=/usr
+	make all doc info
+	sudo make install install-doc install-html install-info
 	cd ../
-	#rm -rf git-$GIT_VERSION_TO_INSTALL*
-	#rm -rf v$GIT_VERSION_TO_INSTALL.tar.gz
+	rm -rf git-$GIT_VERSION_TO_INSTALL*
+	rm -rf v$GIT_VERSION_TO_INSTALL.tar.gz
 	cd $MY_CUR_DIR
 
     fi
