@@ -1,6 +1,23 @@
 #!/bin/bash
 
 
+
+
+### TO DO LIST
+# 
+# do a massive check to see which env are set
+# check for/install sencha
+# add a section for installing the newest version of emacs
+# put my bash short cuts in there
+# configure emacs
+# add linters
+# add js
+# add node
+# add option to create dirs in /opt
+# add option to install migrate
+
+
+
 # Default colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -8,7 +25,7 @@ BLACK='\033[0;30m'
 
 
 CUR_USER=`who am i | awk '{print $1}'`
-CUR_GO_PATH=`sudo -EHiu $CUR_USER env | grep GOPATH 2> /dev/null | cut -d "=" -f2`
+CUR_GO_PATH=`env | grep GOPATH 2> /dev/null | cut -d "=" -f2`
 
 
 # Prints the help menu
@@ -36,7 +53,7 @@ DESCRIPTION
                prints this help screen
 
         -c
-               checks the system (must be run using sudo)
+               checks the system
 
         -i       
                installs and configures everything
@@ -48,69 +65,89 @@ EOF
     exit 1
 }
 
+
+checkForBin() {
+    if hash $1 2>/dev/null; then
+	BIN_VERSION=`$1 $2 | head -1`
+        printf "  ${GREEN}[SUCCESS]${BLACK} - Running $1 version $BIN_VERSION\n"
+    else
+        printf "  ${RED}[FAILURE]${BLACK} - $1 not found!\n"
+    fi
+}
+
+
 # Checks the status of the system
 checkStatus() {
-    echo "--- CHECKING SYSTEM STATUS"
+    echo "----------------------------"
+    echo "-  CHECKING SYSTEM STATUS  -"
+    echo "----------------------------"
     echo ""
 
 
     ### Make sure this is run properly
-    if [ "$EUID" -ne 0 ]; then
-	echo "please run me with sudo"
+    if [ "$EUID" -eq 0 ]; then
+	echo "please DON'T run me with sudo"
 	exit 1
     fi
 
 
     ### Check if sudo is setup for this user
-    echo -n "> Checking sudo - "
+    echo "> Checking permissions"
     check1=`sudo grep ^"$USER" /etc/sudoers 2> /dev/null`
 
     if [[ -z "$check1" ]] ; then
-	printf "${RED}[FAILURE]${BLACK}\n"
-	echo "Sudo is not setup for this user!"
-        echo "To enable sudo for user $USER run visudo and"
-	echo "add this line at the end of the file:"
-        echo "<your_user_name_here> ALL=(ALL) NOPASSWD: ALL"
+	printf "  ${RED}[FAILURE]${BLACK} - sudo\n"
+	
+	echo "    Sudo is not setup for this user!"
+        echo "    To enable sudo for user $USER run visudo and"
+	echo "    add this line at the end of the file:"
+        echo "    <your_user_name_here> ALL=(ALL) NOPASSWD: ALL"
 	exit 1
     else
-	printf "${GREEN}[SUCCESS]${BLACK}\n"
+	printf "  ${GREEN}[SUCCESS]${BLACK} - sudo\n"
     fi
+    
     echo ""
     
+
     ### Check environment variables
     echo "> Checking for environment variables"
-    CLS=`sudo -EHiu $CUR_USER env | grep _CLUSTER 2> /dev/null`
-    CAS=`sudo -EHiu $CUR_USER env | grep CASSANDRA_CONSISTENCY 2> /dev/null`
-    MY_GOPATH=`sudo -EHiu $CUR_USER env | grep GOPATH 2> /dev/null`
-    MY_GOBIN=`sudo -EHiu $CUR_USER env | grep GOBIN 2> /dev/null`
 
-    echo -n "  *_CLUSTER - "
+    CLS=`env | grep _CLUSTER 2> /dev/null`
+    CAS=`env | grep CASSANDRA_CONSISTENCY 2> /dev/null`
+    MY_GOPATH=`env | grep GOPATH 2> /dev/null`
+    MY_GOBIN=`env | grep GOBIN 2> /dev/null`
+
     if [[ -z $CLS ]] ; then
-	printf "${RED}[FAILURE]${BLACK}\n"
+	printf "  ${RED}[FAILURE]${BLACK} - "
     else
-	printf "${GREEN}[SUCCESS]${BLACK}\n"
+	printf "  ${GREEN}[SUCCESS]${BLACK} - "
     fi
+    echo "*_CLUSTER"
 
-    echo -n "  CASSANDRA_CONSISTENCY - "
     if [[ -z $CAS ]] ; then
-	printf "${RED}[FAILURE]${BLACK}\n"
+	printf "  ${RED}[FAILURE]${BLACK} - "
     else
-	printf "${GREEN}[SUCCESS]${BLACK}\n"
+	printf "  ${GREEN}[SUCCESS]${BLACK} - "
     fi
+    echo "CASSANDRA_CONSISTENCY"
 
-    echo -n "  GOPATH - "
+
     if [[ -z $MY_GOPATH ]] ; then
-	printf "${RED}[FAILURE]${BLACK}\n"
+	printf "  ${RED}[FAILURE]${BLACK} - "
+	echo "WARNING the GOPATH environment variable is not set. Please fix this and run this check again!"
+	exit 1
     else
-	printf "${GREEN}[SUCCESS]${BLACK}\n"
+	printf "  ${GREEN}[SUCCESS]${BLACK} - "
     fi
+    echo "GOPATH"
 
-    echo -n "  GOBIN - "
     if [[ -z $MY_GOBIN ]] ; then
-	printf "${RED}[FAILURE]${BLACK}\n"
+	printf "  ${RED}[FAILURE]${BLACK} - "
     else
-	printf "${GREEN}[SUCCESS]${BLACK}\n"
+	printf "  ${GREEN}[SUCCESS]${BLACK} - "
     fi
+    echo "GOBIN"
 
     if [[ -z $CAS ]] || [[ -z $CLS ]]; then
 	echo "To set the needed variables for this session"
@@ -118,6 +155,7 @@ checkStatus() {
 	echo "of the application you are trying to run."
     fi
     echo ""
+
 
     ### Check if the required directories exists in /opt
     echo "> Checking /opt directories"    
@@ -130,10 +168,7 @@ checkStatus() {
 
     for key in "${!OPT_FILES[@]}" 
     do 
-	#echo "$key ${OPT_FILES[$key]}"
-
 	KEY_DIR="/opt/${OPT_FILES[$key]}"
-	echo -n "  $KEY_DIR - "
 
 	# Check if dir exists
 	if [ -d $KEY_DIR ]; then
@@ -141,21 +176,45 @@ checkStatus() {
 	    
 	    # If it exists, make sure the permissions are correct
 	    if [ $KEY_PERM -ne 755 ] ; then
-		echo "[FAILURE] (permissions should be 755 not $KEY_PERM)"
+		printf "  ${RED}[FAILURE]${BLACK} - $KEY_DIR (permissions should be 755 not $KEY_PERM)\n"
 	    else
-		printf "${GREEN}[SUCCESS]${BLACK}\n"
+		printf "  ${GREEN}[SUCCESS]${BLACK} - $KEY_DIR\n"
 	    fi
 	else
-	    printf "${RED}[FAILURE]${BLACK}\n"
+	    printf "  ${RED}[FAILURE]${BLACK} - $KEY_DIR\n"
 	fi
+
     done
 
     IFS=$OIFS
 
     echo ""
 
+
+    ### Make sure migrate is installed
+    echo "> Checking for required tools"
+
+    # if hash migrate 2>/dev/null; then
+    # 	MIGRATE_VERSION=`$GOPATH/bin/migrate --version`
+    #     printf "  ${GREEN}[SUCCESS]${BLACK} - Running migrate version $MIGRATE_VERSION\n"
+    # else
+    #     printf "  ${RED}[FAILURE]${BLACK} - Migrate not found!\n"
+    # fi
+
+    checkForBin migrate "-version"
+    checkForBin cassandra "-v"
+    checkForBin go "version"
+    checkForBin git "--version"
+    checkForBin emacs "--version"
+    checkForBin vim "--version"
+
+
+
+    echo ""
     exit 1
 }
+
+
 
 # Does all the heavy lifting of installing stuff
 installAndConfigure() {
@@ -564,6 +623,7 @@ installAndConfigure() {
 
     ### Install linters
 
+    ### Add a new PS1 value into bashrc to handle the git code
     exit 1
 }
 
