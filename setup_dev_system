@@ -5,13 +5,10 @@
 
 ### TO DO LIST
 # 
-# do a massive check to see which env are set
-# check for/install sencha
-# add a section for installing the newest version of emacs
+# install sencha
 # configure emacs
 # add linters
 # add js
-# add node
 # check to see if submodules need to be updated/synced
 # offer to create GOPATH if not found
 
@@ -69,9 +66,9 @@ EOF
 checkForBin() {
     if hash $1 2>/dev/null; then
 	BIN_VERSION=`$1 $2 | head -1`
-        printf "  ${GREEN}[SUCCESS]${BLACK} - $1 ($BIN_VERSION)\n"
+        printf "  [SUCCESS] - $1 ($BIN_VERSION)\n"
     else
-        printf "  ${RED}[FAILURE]${BLACK} - $1 not found!\n"
+        printf "  [FAILURE] - $1 not found!\n"
     fi
 }
 
@@ -94,13 +91,13 @@ checkStatus() {
     echo "> Checking permissions"
     sudo echo -n " "
     if [ $? -ne 0 ]; then
-	printf "  ${RED}[FAILURE]${BLACK} - sudo\n"
+	printf "  [FAILURE] - sudo\n"
 	echo "    Sudo is not setup for this user!"
         echo "    To enable sudo for user $USER run visudo and"
 	echo "    add this line at the end of the file:"
         echo "    <your_user_name_here> ALL=(ALL) NOPASSWD: ALL"
     else
-	printf "  ${GREEN}[SUCCESS]${BLACK} - sudo enabled for this user\n"
+	printf "  [SUCCESS] - sudo enabled for this user\n"
     fi
     
     echo ""
@@ -115,33 +112,33 @@ checkStatus() {
     MY_GOBIN=`env | grep GOBIN 2> /dev/null`
 
     if [[ -z $CLS ]] ; then
-	printf "  ${RED}[FAILURE]${BLACK} - "
+	printf "  [FAILURE] - "
     else
-	printf "  ${GREEN}[SUCCESS]${BLACK} - "
+	printf "  [SUCCESS] - "
     fi
     echo "*_CLUSTER"
 
     if [[ -z $CAS ]] ; then
-	printf "  ${RED}[FAILURE]${BLACK} - "
+	printf "  [FAILURE] - "
     else
-	printf "  ${GREEN}[SUCCESS]${BLACK} - "
+	printf "  [SUCCESS] - "
     fi
     echo "CASSANDRA_CONSISTENCY"
 
 
     if [[ -z $MY_GOPATH ]] ; then
-	printf "  ${RED}[FAILURE]${BLACK} - "
+	printf "  [FAILURE] - "
 	echo "WARNING the GOPATH environment variable is not set. Please fix this and run this check again!"
 	exit 1
     else
-	printf "  ${GREEN}[SUCCESS]${BLACK} - "
+	printf "  [SUCCESS] - "
     fi
     echo "GOPATH"
 
     if [[ -z $MY_GOBIN ]] ; then
-	printf "  ${RED}[FAILURE]${BLACK} - "
+	printf "  [FAILURE] - "
     else
-	printf "  ${GREEN}[SUCCESS]${BLACK} - "
+	printf "  [SUCCESS] - "
     fi
     echo "GOBIN"
 
@@ -172,12 +169,12 @@ checkStatus() {
 	    
 	    # If it exists, make sure the permissions are correct
 	    if [ $KEY_PERM -ne 755 ] ; then
-		printf "  ${RED}[FAILURE]${BLACK} - $KEY_DIR (permissions should be 755 not $KEY_PERM)\n"
+		printf "  [FAILURE] - $KEY_DIR (permissions should be 755 not $KEY_PERM)\n"
 	    else
-		printf "  ${GREEN}[SUCCESS]${BLACK} - $KEY_DIR\n"
+		printf "  [SUCCESS] - $KEY_DIR\n"
 	    fi
 	else
-	    printf "  ${RED}[FAILURE]${BLACK} - $KEY_DIR\n"
+	    printf "  [FAILURE] - $KEY_DIR\n"
 	fi
 
     done
@@ -196,6 +193,7 @@ checkStatus() {
     checkForBin git "--version"
     checkForBin emacs "--version"
     checkForBin vim "--version"
+    checkForBin sencha "help"
 
 
     ### Check the Git submodules for each project
@@ -216,7 +214,7 @@ checkStatus() {
 # Does all the heavy lifting of installing stuff
 installAndConfigure() {
     clear
-    counter=0
+    counter=1
 
     #####################################################
     ### Check to make sure this isn't run with sudo
@@ -471,7 +469,7 @@ installAndConfigure() {
 
 	while true; do
 	    echo "You entered: $USER_EMAIL"
-	    read -p "  [$counter] Is this correct? (y/n) " yn
+	    read -p "  Is this correct? (y/n) " yn
 	    case $yn in
  
 		[Yy]* ) break;;
@@ -500,7 +498,7 @@ installAndConfigure() {
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	echo ""
 	echo "  ==================================="
-	echo "  === Setu  p Git Config"
+	echo "  === Setup Git Config"
 	echo "  ==================================="
 
 	
@@ -602,7 +600,7 @@ installAndConfigure() {
     #####################################################
     ### Pull down go tools
     #####################################################
-    read -p "  [$counter] Do you want o install extra Go tools? (y/n) " -n 1 -r
+    read -p "  [$counter] Do you want to install extra Go tools? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
@@ -696,8 +694,8 @@ installAndConfigure() {
 	fi
 
 	#val="SUCCESS"
-	#printf "%10s -[ ${GREEN}%30s${BLACK}]\n" "$KEY_DIR" "$val"
-	printf "[${GREEN}SUCCESS${BLACK}] %20s\n" "$KEY_DIR"
+	#printf "%10s -[ %30s]\n" "$KEY_DIR" "$val"
+	printf "[SUCCESS] %20s\n" "$KEY_DIR"
     done
 
     IFS=$OIFS
@@ -707,7 +705,7 @@ installAndConfigure() {
 
 
     #####################################################
-    ### Install JS Tools
+    ### Install NodeJS & JS Tools
     #####################################################
     read -p "  [$counter] Do you want to install JS tools? (y/n) " -n 1 -r
     counter=$((counter+1)) 
@@ -759,6 +757,9 @@ eslint"
 	./configure
 	make
 	sudo make install
+	# put in check to see if emacs was installed correctly
+	cd ../
+	rm -rf emacs-$emacsVersion
 
     fi
     echo ""
