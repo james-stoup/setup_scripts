@@ -385,8 +385,11 @@ installAndConfigure() {
 	echo "  ==================================="
 
 	cd $HOME/Downloads
-	wget "https://storage.googleapis.com/golang/go$GOVER.$OS-$ARCH.tar.gz"
-	sudo tar -C /usr/local -xzf go$GOVER.$OS-$ARCH.tar.gz
+
+	GOVER=1.6.1
+	wget "https://storage.googleapis.com/golang/go$GOVER.linux-amd64.tar.gz"
+
+	sudo tar -C /usr/local -xzf go$GOVER.linux-amd64.tar.gz
 	echo "export GOPATH=$GOPATH" | tee -a $HOME/.env
 	source $HOME/.env
 	cd $HOME
