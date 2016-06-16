@@ -7,7 +7,6 @@
 # 
 # install sencha
 # configure emacs
-# add linters
 # add js
 # check to see if submodules need to be updated/synced
 # offer to create GOPATH if not found
@@ -97,7 +96,7 @@ checkStatus() {
 	echo "    add this line at the end of the file:"
         echo "    <your_user_name_here> ALL=(ALL) NOPASSWD: ALL"
     else
-	printf "  [SUCCESS] - sudo enabled for this user\n"
+	printf " [SUCCESS] - sudo enabled for this user\n"
     fi
     
     echo ""
@@ -245,11 +244,13 @@ installAndConfigure() {
     echo "===     DEVELOPER SETUP/CONFIGURE SCRIPT      ==="
     echo "=================================================="
     echo ""
-    echo "  Welcome to the developers setup script. This"
-    echo "  script should configure a new machine for our"
-    echo "  basic development layout."
+    echo "Welcome to the developers setup script. This"
+    echo "script should configure a new machine for our"
+    echo "basic development layout."
     echo ""
 
+    echo ""
+    echo "--SYSTEM"
 
     #####################################################
     ### Add some repos
@@ -323,6 +324,9 @@ installAndConfigure() {
     echo ""   
 
 
+    echo ""   
+    echo "--DATABASE"
+
     #####################################################
     ### Install Cassandra
     #####################################################
@@ -344,33 +348,51 @@ installAndConfigure() {
 
 
     #####################################################
-    ### Dir setup
+    ### Install Lucene
     #####################################################
-    read -p "  [$counter] Do you want to setup your Go workspace? (y/n) " -n 1 -r
+        read -p "  [$counter] Do you want to install Lucene? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	echo ""
 	echo "  ==================================="
-	echo "  === Setting up the dev directory and envs"
+	echo "  === Installing Lucene"
 	echo "  ==================================="
 
-	DEV_DIR_NAME="dev"
-	mkdir ~/$DEV_DIR_NAME
-	cd  ~/$DEV_DIR_NAME
-	mkdir bin pkg src
-	echo "# Go Environment Variables" >> ~/.bashrc
-	echo "export GOPATH=$HOME/$DEV_DIR_NAME" >> ~/.bashrc
-	echo "export GOBIN=$GOPATH/bin" >> ~/.bashrc
-	echo "export GOROOT=/usr/local/go" >> ~/.bashrc
-	echo "" >> ~/.bashrc
-	echo "export PATH=$PATH:$GOBIN" >> ~/.bashrc
-	echo "New go development directory created at: ~/$DEV_DIR_NAME"
+	NOVAHOME=$GOPATH/src/github.com/Novetta
+	LUCENE_PATH=$NOVAHOME/common/lucene/cassandra-lucene-index-plugin* 
+	if [ ! -f $LUCENE_PATH ] ; then
+	    echo "WARNING! Lucene not found. Check in $GOPATH/common/lucene for the jar file"
+	else
+	    sudo cp $NOVAHOME/common/lucene/cassandra-lucene-index-plugin* /usr/share/cassandra/lib/
+	    sudo chown cassandra:cassandra /usr/share/cassandra/lib/cassandra-lucene-index-plugin*
+	    sudo systemctl enable cassandra
+	fi
+    fi
+    echo ""
+
+
+    #####################################################
+    ### Install the migrate tool
+    #####################################################
+    read -p "  [$counter] Do you want to install the migrate tool? (y/n) " -n 1 -r
+    counter=$((counter+1)) 
+
+    if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	echo ""
+	echo "  ==================================="
+	echo "  === Installing Migrate"
+	echo "  ==================================="
+
+	go get -u github.com/mattes/migrate
 
     fi
     echo ""
 
+
+
+    echo ""   
+    echo "--GOLANG"
 
     #####################################################
     ### Install Go
@@ -384,11 +406,21 @@ installAndConfigure() {
 	echo "  === Installing Go"
 	echo "  ==================================="
 
-	cd $HOME/Downloads
+	# Setup the Go Dev directory structure
+	DEV_DIR_NAME="dev"
+	mkdir ~/$DEV_DIR_NAME
+	cd  ~/$DEV_DIR_NAME
+	mkdir bin pkg src
+	echo "# Go Environment Variables" >> ~/.bashrc
+	echo "export GOPATH=$HOME/$DEV_DIR_NAME" >> ~/.bashrc
+	echo "export GOBIN=$GOPATH/bin" >> ~/.bashrc
+	echo "export GOROOT=/usr/local/go" >> ~/.bashrc
+	echo "" >> ~/.bashrc
+	echo "export PATH=$PATH:$GOBIN" >> ~/.bashrc
 
+	cd $HOME/Downloads
 	GOVER=1.6.1
 	wget "https://storage.googleapis.com/golang/go$GOVER.linux-amd64.tar.gz"
-
 	sudo tar -C /usr/local -xzf go$GOVER.linux-amd64.tar.gz
 	echo "export GOPATH=$GOPATH" | tee -a $HOME/.env
 	source $HOME/.env
@@ -399,25 +431,45 @@ installAndConfigure() {
 
 
     #####################################################
-    ### Install Chrome
+    ### Install Go Linters
     #####################################################
-    read -p "  [$counter] Do you want to install Chrome? (y/n) " -n 1 -r
+    read -p "  [$counter] Do you want to install Go Lint? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	echo ""
 	echo "  ==================================="
-	echo "  === Installing Chrome"
+	echo "  === Installing Go Lint"
 	echo "  ==================================="
 
-	echo "Installing Google Chrome"
-	cd $HOME/Downloads
-	wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
-	sudo yum install -y google-chrome-stable_current_x86_64.rpm
-	cd $HOME
+	# TODO - put a check in to make sure GOPATH is set
+	go get -u github.com/golang/lint/golint
+
     fi
     echo ""
 
+
+    #####################################################
+    ### Pull down go tools
+    #####################################################
+    read -p "  [$counter] Do you want to install extra Go tools? (y/n) " -n 1 -r
+    counter=$((counter+1)) 
+
+    if [[ $REPLY =~ ^[Yy]$ ]] ; then
+	echo ""
+	echo "  ==================================="
+	echo "  === Pulling down the Golang Tools"
+	echo "  ==================================="
+
+	cd ~/$DEV_DIR_NAME
+	go get golang.org/x/tools/cmd/...
+	cd $MY_CUR_DIR
+    fi
+    echo ""
+
+
+    echo ""   
+    echo "--GIT"
 
     #####################################################
     ### Install Git
@@ -449,44 +501,6 @@ installAndConfigure() {
 	rm -rf git-$GIT_VERSION_TO_INSTALL*
 	rm -rf v$GIT_VERSION_TO_INSTALL.tar.gz
 	cd $MY_CUR_DIR
-
-    fi
-    echo ""
-
-
-    #####################################################
-    ### Add your ssh key to github
-    #####################################################
-    read -p "  [$counter] Do you want to generate your SSH keys for github? (y/n) " -n 1 -r
-    counter=$((counter+1)) 
-
-    if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Generating an SSH Key for Github"
-	echo "  ==================================="
-
-	echo ""
-	echo -n "Please enter your email address > "
-	read USER_EMAIL
-
-	while true; do
-	    echo "You entered: $USER_EMAIL"
-	    read -p "  Is this correct? (y/n) " yn
-	    case $yn in
- 
-		[Yy]* ) break;;
-		[Nn]* ) echo -n "Please enter your email address > " ; read USER_EMAIL;;
-		* ) echo "Please answer yes or no.";;
-	    esac
-	done
-
-	ssh-keygen -t rsa -b 4096 -C $USER_EMAIL
-	eval $(ssh-agent -s)
-	ssh-add ~/.ssh/id_rsa
-
-	echo "Be sure to visit https://github.com/settings/ssh to enter this ssh key."
-	echo "Failure to add this key to github will prevent git from working properly."
 
     fi
     echo ""
@@ -551,6 +565,47 @@ installAndConfigure() {
 
 
     #####################################################
+    ### Add your ssh key to github
+    #####################################################
+    read -p "  [$counter] Do you want to generate your SSH keys for github? (y/n) " -n 1 -r
+    counter=$((counter+1)) 
+
+    if [[ $REPLY =~ ^[Yy]$ ]] ; then
+	echo ""
+	echo "  ==================================="
+	echo "  === Generating an SSH Key for Github"
+	echo "  ==================================="
+
+	echo ""
+	echo -n "Please enter your email address > "
+	read USER_EMAIL
+
+	while true; do
+	    echo "You entered: $USER_EMAIL"
+	    read -p "  Is this correct? (y/n) " yn
+	    case $yn in
+ 
+		[Yy]* ) break;;
+		[Nn]* ) echo -n "Please enter your email address > " ; read USER_EMAIL;;
+		* ) echo "Please answer yes or no.";;
+	    esac
+	done
+
+	ssh-keygen -t rsa -b 4096 -C $USER_EMAIL
+	eval $(ssh-agent -s)
+	ssh-add ~/.ssh/id_rsa
+
+	echo "Be sure to visit https://github.com/settings/ssh to enter this ssh key."
+	echo "Failure to add this key to github will prevent git from working properly."
+
+    fi
+    echo ""
+
+
+    echo ""   
+    echo "--NOVETTA"
+
+    #####################################################
     ### Pull down the Novetta repos
     #####################################################
     read -p "  [$counter] Do you want to install the Novetta repos? (y/n) " -n 1 -r
@@ -600,66 +655,6 @@ installAndConfigure() {
     echo ""
 
 
-    #####################################################
-    ### Pull down go tools
-    #####################################################
-    read -p "  [$counter] Do you want to install extra Go tools? (y/n) " -n 1 -r
-    counter=$((counter+1)) 
-
-    if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Pulling down the Golang Tools"
-	echo "  ==================================="
-
-	cd ~/$DEV_DIR_NAME
-	go get golang.org/x/tools/cmd/...
-	cd $MY_CUR_DIR
-    fi
-    echo ""
-
-
-    #####################################################
-    ### Install Lucene
-    #####################################################
-        read -p "  [$counter] Do you want to install Lucene? (y/n) " -n 1 -r
-    counter=$((counter+1)) 
-
-    if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing Lucene"
-	echo "  ==================================="
-
-	NOVAHOME=$GOPATH/src/github.com/Novetta
-	LUCENE_PATH=$NOVAHOME/common/lucene/cassandra-lucene-index-plugin* 
-	if [ ! -f $LUCENE_PATH ] ; then
-	    echo "WARNING! Lucene not found. Check in $GOPATH/common/lucene for the jar file"
-	else
-	    sudo cp $NOVAHOME/common/lucene/cassandra-lucene-index-plugin* /usr/share/cassandra/lib/
-	    sudo chown cassandra:cassandra /usr/share/cassandra/lib/cassandra-lucene-index-plugin*
-	    sudo systemctl enable cassandra
-	fi
-    fi
-    echo ""
-
-
-    #####################################################
-    ### Install the migrate tool
-    #####################################################
-    read -p "  [$counter] Do you want to install the migrate tool? (y/n) " -n 1 -r
-    counter=$((counter+1)) 
-
-    if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing Migrate"
-	echo "  ==================================="
-
-	go get -u github.com/mattes/migrate
-
-    fi
-    echo ""
 
 
     #####################################################
@@ -707,6 +702,10 @@ installAndConfigure() {
     echo ""
 
 
+    echo ""   
+    echo "--JAVASCRIPT"
+
+
     #####################################################
     ### Install NodeJS & JS Tools
     #####################################################
@@ -735,6 +734,32 @@ eslint"
     fi
     echo ""
 
+
+
+
+    echo ""   
+    echo "--TOOLS"
+
+
+    #####################################################
+    ### Install Chrome
+    #####################################################
+    read -p "  [$counter] Do you want to install Chrome? (y/n) " -n 1 -r
+    counter=$((counter+1)) 
+
+    if [[ $REPLY =~ ^[Yy]$ ]] ; then
+	echo ""
+	echo "  ==================================="
+	echo "  === Installing Chrome"
+	echo "  ==================================="
+
+	echo "Installing Google Chrome"
+	cd $HOME/Downloads
+	wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+	sudo yum install -y google-chrome-stable_current_x86_64.rpm
+	cd $HOME
+    fi
+    echo ""
 
 
     #####################################################
@@ -766,6 +791,32 @@ eslint"
 
     fi
     echo ""
+
+
+    # #####################################################
+    # ### Install Git Hooks
+    # #####################################################
+    #     read -p "  [$counter] Do you want to install git hooks? (y/n) " -n 1 -r
+    # counter=$((counter+1)) 
+
+    # if [[ $REPLY =~ ^[Yy]$ ]] ; then
+    # 	echo ""
+    # 	echo "  ==================================="
+    # 	echo "  === Installing Git Hooks"
+    # 	echo "  ==================================="
+
+    # 	NOVAHOME=$GOPATH/src/github.com/Novetta
+    # 	LUCENE_PATH=$NOVAHOME/common/lucene/cassandra-lucene-index-plugin* 
+    # 	if [ ! -f $LUCENE_PATH ] ; then
+    # 	    echo "WARNING! Lucene not found. Check in $GOPATH/common/lucene for the jar file"
+    # 	else
+    # 	    sudo cp $NOVAHOME/common/lucene/cassandra-lucene-index-plugin* /usr/share/cassandra/lib/
+    # 	    sudo chown cassandra:cassandra /usr/share/cassandra/lib/cassandra-lucene-index-plugin*
+    # 	    sudo systemctl enable cassandra
+    # 	fi
+    # fi
+    # echo ""
+
 
     #####################################################
     ### Enhance the bash prompt
@@ -840,9 +891,9 @@ eslint"
     #####################################################
 
 
-    #####################################################
-    ### Install linters
-    #####################################################
+    
+
+
 
 
     echo ""
