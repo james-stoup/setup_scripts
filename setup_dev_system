@@ -7,10 +7,17 @@
 # 
 # install sencha
 # configure emacs
+# install libreoffice
 # add js
 # check to see if submodules need to be updated/synced
 # offer to create GOPATH if not found
-
+# make sure IP tables is disabled
+# make sure the ext library is linked in the right place
+# ER MAH GURD. Install libreoffice like so:
+# sudo yum install -y libreoffice-headless
+# sudo yum install -y libreoffice-writer
+# sudo yum install -y libreoffice-draw
+# sudo yum install -y libreoffice-impress
 
 # Default colors
 RED='\033[0;31m'
