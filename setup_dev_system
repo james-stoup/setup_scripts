@@ -31,7 +31,9 @@ CUR_USER=`who am i | awk '{print $1}'`
 CUR_GO_PATH=`env | grep GOPATH 2> /dev/null | cut -d "=" -f2`
 
 
-# Prints the help menu
+#####################################################
+### Prints the help menu
+#####################################################
 usage() {
     cat <<EOF
 setup_dev_system
@@ -68,7 +70,9 @@ EOF
     exit 1
 }
 
-
+#####################################################
+### Checks if the version of a binary is valid
+#####################################################
 checkForBin() {
     if hash $1 2>/dev/null; then
 	BIN_VERSION=`$1 $2 | head -1`
@@ -79,7 +83,9 @@ checkForBin() {
 }
 
 
-# Checks the status of the system
+#####################################################
+### Checks the status of the system
+#####################################################
 checkStatus() {
     echo "----------------------------"
     echo "-  CHECKING SYSTEM STATUS  -"
@@ -112,6 +118,10 @@ checkStatus() {
     ### Check environment variables
     echo "> Checking for environment variables"
 
+    # REFACTOR THIS
+    # ALSO, put in checks for: USE_LIBRE and KLE_MIGRATE_DIR
+
+    
     CLS=`env | grep _CLUSTER 2> /dev/null`
     CAS=`env | grep CASSANDRA_CONSISTENCY 2> /dev/null`
     MY_GOPATH=`env | grep GOPATH 2> /dev/null`
@@ -216,24 +226,21 @@ checkStatus() {
 }
 
 
-
-# Does all the heavy lifting of installing stuff
-installAndConfigure() {
-    clear
-    counter=1
-
-    #####################################################
-    ### Check to make sure this isn't run with sudo
-    #####################################################
+#####################################################
+### Check to make sure this isn't run with sudo
+#####################################################
+sudoCheck() {
     if [ $EUID -eq 0 ]; then
 	echo "This script doesn't need to be run with sudo"
 	exit 1
     fi
+}
 
 
-    #####################################################
-    ### Check to make sure we aren't running this as root
-    #####################################################
+#####################################################
+### Check to make sure we aren't running this as root
+#####################################################
+rootCheck() {
     WHO_AM_I=`who am i | awk '{print $1}'`
     if [[ "$WHO_AM_I" = "root" ]]; then
 	echo "WARNING! You can't run this AS the root user!" 
@@ -242,11 +249,12 @@ installAndConfigure() {
 	echo "this installed in /root."
 	exit 1
     fi
+}
 
-
-    #####################################################
-    ### Welcome
-    #####################################################
+#####################################################
+### Welcome
+#####################################################
+printWelcome() {
     echo "=================================================="
     echo "===     DEVELOPER SETUP/CONFIGURE SCRIPT      ==="
     echo "=================================================="
@@ -255,68 +263,124 @@ installAndConfigure() {
     echo "script should configure a new machine for our"
     echo "basic development layout."
     echo ""
+}
 
+
+#####################################################
+### Print default install banner
+#####################################################
+printInstallBanner() {
     echo ""
-    echo "--SYSTEM"
+    echo "  ==================================="
+    echo "  === $1"
+    echo "  ==================================="
+}
 
-    #####################################################
-    ### Add some repos
-    #####################################################
+
+#####################################################
+### Print new heading
+#####################################################
+printInstallHeading() {
+    echo ""
+    echo "-- $1"
+}
+
+
+
+#####################################################
+### Add additional repos to your system
+#####################################################
+addRepos() {
     read -p "  [$counter] Do you want to install extra repos? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing the extra repos"
-	echo "  ==================================="
+	printInstallBanner "Installing the extra repos"
 
-	sudo yum install -y epel-release
-	sudo yum install -y epel-release.noarch
+	echo " Installing EPEL, Remi and RPM Forge..."
+	sudo rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+	sudo rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+	sudo rpm -Uvh http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
+
 	echo ""
     fi
     echo ""
+}
 
 
-    #####################################################
-     ### Add some RPMS
-    #####################################################
-    read -p "  [$counter] Do you want to install extra RPMS? (y/n) " -n 1 -r
+#####################################################
+### Install additional packages
+#####################################################
+addRPMs() {
+    read -p "  [$counter] Do you want to install additional packages? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing extra RPMs"
-	echo "  ==================================="
+	printInstallBanner "Installing extra RPMs"
 
 	RPMS=(
-	    emacs
-	    curl-devel
-	    expat-devel
-	    gettext-devel
-	    openssl-devel
-	    zlib-devel
-	    gcc
-	    perl-ExtUtils-MakeMaker
-	    xclip
 	    ack
-	    zeromq
-	    zeromq-devel
 	    autoconf
 	    automake
+	    bash-completion
 	    cmake
+	    curl-devel
+	    emacs
+	    expat-devel
 	    freetype-devel
+	    ftp
+	    gcc
 	    gcc-c++
+	    gettext-devel
+	    giflib
+	    giflib-devel
+	    giflib-utils
 	    git
+	    gtk2-devel
+	    libjpeg
+	    libjpeg-turbo
+	    libjpeg-turbo-devel
+	    libtiff
+	    libtiff-devel
 	    libtool
+	    libXpm
+	    libXpm-devel
 	    make
 	    mercurial
 	    nasm
-	    yasm
+	    ncurses-devel
+	    openoffice.org-base
+	    openoffice.org-base-core
+	    openoffice.org-brand
+	    openoffice.org-calc
+	    openoffice.org-calc-core
+	    openoffice.org-core
+	    openoffice.org-devel
+	    openoffice.org-draw
+	    openoffice.org-draw-core
+	    openoffice.org-graphicfilter
+	    openoffice.org-headless
+	    openoffice.org-impress
+	    openoffice.org-impress-core
+	    openoffice.org-math
+	    openoffice.org-math-core
+	    openoffice.org-ogltrans
+	    openoffice.org-pdfimport
+	    openoffice.org-presentation-minimizer
+	    openoffice.org-rhino
+	    openoffice.org-sdk
+	    openoffice.org-sdk-doc
+	    openoffice.org-testtools
+	    openoffice.org-writer
+	    openoffice.org-writer-core
+	    openssl-devel
+	    perl-ExtUtils-MakeMaker
 	    pkgconfig
+	    xclip
+	    yasm
+	    zeromq
+	    zeromq-devel
 	    zlib-devel
-	    ftp
 	)
 
 	for rpm in "${RPMS[@]}"
@@ -330,41 +394,39 @@ installAndConfigure() {
     fi
     echo ""   
 
+}
 
-    echo ""   
-    echo "--DATABASE"
 
-    #####################################################
-    ### Install Cassandra
-    #####################################################
+#####################################################
+### Install Cassandra 2.2.3
+#####################################################
+installCassandra() {
     read -p "  [$counter] Do you want to install Cassandra 2.2.3? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing Cassandra 2.2.3"
-	echo "  ==================================="
+	printInstallBanner "Installing Cassandra 2.2.3"
 
 	EXCLUDE_STR="exclude=cassandra22-2.2.4* dsc22-2.2.4* cassandra22-tools-2.2.4* cassandra22-2.2.5* dsc22-2.2.5* cassandra22-tools-2.2.5*" 
-	#sudo echo $EXCLUDE_STR >> /etc/yum.conf
+	sudo echo $EXCLUDE_STR >> /etc/yum.conf
 	sudo yum install -y cassandra22.noarch cassandra22-tools.noarch
 	echo ""
     fi
     echo ""
 
+}
 
-    #####################################################
-    ### Install Lucene
-    #####################################################
-        read -p "  [$counter] Do you want to install Lucene? (y/n) " -n 1 -r
+
+
+#####################################################
+### Install Lucene
+#####################################################
+installLucene() {
+    read -p "  [$counter] Do you want to install Lucene? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing Lucene"
-	echo "  ==================================="
+	printInstallBanner "Installing Lucene"
 
 	NOVAHOME=$GOPATH/src/github.com/Novetta
 	LUCENE_PATH=$NOVAHOME/common/lucene/cassandra-lucene-index-plugin* 
@@ -377,41 +439,35 @@ installAndConfigure() {
 	fi
     fi
     echo ""
+}
 
 
-    #####################################################
-    ### Install the migrate tool
-    #####################################################
+#####################################################
+### Install Migrate Tool (might not need this anymore)
+#####################################################
+installMigrate() {
     read -p "  [$counter] Do you want to install the migrate tool? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing Migrate"
-	echo "  ==================================="
+	printInstallBanner "Installing Migrate"
 
 	go get -u github.com/mattes/migrate
 
     fi
     echo ""
+}
 
 
-
-    echo ""   
-    echo "--GOLANG"
-
-    #####################################################
-    ### Install Go
-    #####################################################
+#####################################################
+### Install Go 1.6.1
+#####################################################
+installGo() {
     read -p "  [$counter] Do you want to install Go? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing Go"
-	echo "  ==================================="
+	printInstallBanner "Installing Go"
 
 	# Setup the Go Dev directory structure
 	DEV_DIR_NAME="dev"
@@ -435,60 +491,54 @@ installAndConfigure() {
 
     fi
     echo ""
+}
 
 
-    #####################################################
-    ### Install Go Linters
-    #####################################################
+#####################################################
+### Install Go Lint
+#####################################################
+installGoLinters() {
     read -p "  [$counter] Do you want to install Go Lint? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing Go Lint"
-	echo "  ==================================="
+	printInstallBanner "Installing Go Lint"
 
 	# TODO - put a check in to make sure GOPATH is set
 	go get -u github.com/golang/lint/golint
 
     fi
     echo ""
+}
 
 
-    #####################################################
-    ### Pull down go tools
-    #####################################################
+#####################################################
+### Install the additional Go dev tools
+#####################################################
+installGoTools() {
     read -p "  [$counter] Do you want to install extra Go tools? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Pulling down the Golang Tools"
-	echo "  ==================================="
+	printInstallBanner "Pulling down the Golang Tools"
 
 	cd ~/$DEV_DIR_NAME
 	go get golang.org/x/tools/cmd/...
 	cd $MY_CUR_DIR
     fi
     echo ""
+}
 
 
-    echo ""   
-    echo "--GIT"
-
-    #####################################################
-    ### Install Git
-    #####################################################
+#####################################################
+### Install Git 2.8.0
+#####################################################
+installGit() {
     read -p "  [$counter] Do you want to install Git 2.8.0? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing Git"
-	echo "  ==================================="
+	printInstallBanner "Installing Git"
 
 	sudo yum install -y curl-devel expat-devel gettext-devel openssl-devel zlib-devel gcc perl-devel
 	sudo yum install -y asciidoc xmlto docbook2X
@@ -512,18 +562,18 @@ installAndConfigure() {
     fi
     echo ""
 
+}
 
-    #####################################################
-    ### Configure Git
-    #####################################################
+
+#####################################################
+### Configure Git with aliases and user info
+#####################################################
+configureGit() {
     read -p "  [$counter] Do you want to configure Git? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Setup Git Config"
-	echo "  ==================================="
+	printInstallBanner "Setup Git Config"
 
 	
 	if [[ -z $USER_EMAIL ]] ; then
@@ -534,7 +584,7 @@ installAndConfigure() {
 		echo "You entered: $USER_EMAIL"
 		read -p "  [$counter] Is this correct? (y/n) " yn
 		case $yn in
- 
+		    
 		    [Yy]* ) break;;
 		    [Nn]* ) echo -n "Please enter your email address > " ; read USER_EMAIL;;
 		    * ) echo "Please answer yes or no.";;
@@ -569,19 +619,18 @@ installAndConfigure() {
 	echo "New data written to ~/.gitconfig"
     fi
     echo ""
+}
 
 
-    #####################################################
-    ### Add your ssh key to github
-    #####################################################
+#####################################################
+### Generate the SSH key for Github
+#####################################################
+generateSshKey() {
     read -p "  [$counter] Do you want to generate your SSH keys for github? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Generating an SSH Key for Github"
-	echo "  ==================================="
+	printInstallBanner "Generating an SSH Key for Github"
 
 	echo ""
 	echo -n "Please enter your email address > "
@@ -591,7 +640,7 @@ installAndConfigure() {
 	    echo "You entered: $USER_EMAIL"
 	    read -p "  Is this correct? (y/n) " yn
 	    case $yn in
- 
+		
 		[Yy]* ) break;;
 		[Nn]* ) echo -n "Please enter your email address > " ; read USER_EMAIL;;
 		* ) echo "Please answer yes or no.";;
@@ -607,38 +656,34 @@ installAndConfigure() {
 
     fi
     echo ""
+}
 
 
-    echo ""   
-    echo "--NOVETTA"
-
-    #####################################################
-    ### Pull down the Novetta repos
-    #####################################################
+#####################################################
+### Pull down the Novetta repos
+#####################################################
+installNovettaRepos() {
     read -p "  [$counter] Do you want to install the Novetta repos? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Pulling down the Novetta Repos"
-	echo "  ==================================="
+	printInstallBanner "Pulling down the Novetta Repos"
 	echo ""
 	echo "This might take a while..."
 
 	NOVA_REPOS=(VideoEnterprise
-	    pwcop
-	    namegen
-	    SSE
-	    goldap
-	    GoSearchService
-	    gmf
-	    perseus
-	    aide
-	    gokerb
-	    gocql
-	    kerbproxy
-	    asn1)
+		    pwcop
+		    namegen
+		    SSE
+		    goldap
+		    GoSearchService
+		    gmf
+		    perseus
+		    aide
+		    gokerb
+		    gocql
+		    kerbproxy
+		    asn1)
 
 	cd ~/$DEV_DIR_NAME
 	
@@ -660,105 +705,94 @@ installAndConfigure() {
 
     fi
     echo ""
+}
 
 
-
-
-    #####################################################
-    ### Create app directories in /opt
-    #####################################################
+#####################################################
+### Configure /opt with the correct permissions
+#####################################################
+configureOpt() {
     read -p "  [$counter] Do you want to create the app directories in /opt and set correct permissions? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Creating directories in /opt"
-	echo "  ==================================="
+	printInstallBanner "Creating directories in /opt"
 
-    OPT_FILES_STR=`find $CUR_GO_PATH/src/github.com/Novetta -name "*.env" | xargs grep "/opt/" | cut -d ":" -f2 | grep -v "^#" | grep export | cut -d "=" -f2 | cut -d "/" -f3 | tr -d "\"" | sort -u  | tr "\n" " " | tr " " "\n" | grep -v PATH | tr "\n" " "`
+	OPT_FILES_STR=`find $CUR_GO_PATH/src/github.com/Novetta -name "*.env" | xargs grep "/opt/" | cut -d ":" -f2 | grep -v "^#" | grep export | cut -d "=" -f2 | cut -d "/" -f3 | tr -d "\"" | sort -u  | tr "\n" " " | tr " " "\n" | grep -v PATH | tr "\n" " "`
 
-    OIFS=$IFS
-    IFS=" "
-    OPT_FILES=($OPT_FILES_STR)
+	OIFS=$IFS
+	IFS=" "
+	OPT_FILES=($OPT_FILES_STR)
 
-    for key in "${!OPT_FILES[@]}" 
-    do 
-	KEY_DIR="/opt/${OPT_FILES[$key]}"
+	for key in "${!OPT_FILES[@]}" 
+	do 
+	    KEY_DIR="/opt/${OPT_FILES[$key]}"
 
-	# Check if dir exists
-	if [ -d $KEY_DIR ]; then
-	    KEY_PERM=`stat -c "%a" $KEY_DIR`
-	    
-	    # If it exists, make sure the permissions are correct
-	    if [ $KEY_PERM -ne 755 ] ; then
-		sudo chmod 755 $KEY_DIR
+	    # Check if dir exists
+	    if [ -d $KEY_DIR ]; then
+		KEY_PERM=`stat -c "%a" $KEY_DIR`
+		
+		# If it exists, make sure the permissions are correct
+		if [ $KEY_PERM -ne 755 ] ; then
+		    sudo chmod 755 $KEY_DIR
+		fi
+	    else
+		sudo mkdir -m 755 $KEY_DIR
 	    fi
-	else
-	    sudo mkdir -m 755 $KEY_DIR
-	fi
 
-	#val="SUCCESS"
-	#printf "%10s -[ %30s]\n" "$KEY_DIR" "$val"
-	printf "[SUCCESS] %20s\n" "$KEY_DIR"
-    done
+	    #val="SUCCESS"
+	    #printf "%10s -[ %30s]\n" "$KEY_DIR" "$val"
+	    printf "[SUCCESS] %20s\n" "$KEY_DIR"
+	done
 
-    IFS=$OIFS
+	IFS=$OIFS
 
     fi
     echo ""
+}
 
 
-    echo ""   
-    echo "--JAVASCRIPT"
-
-
-    #####################################################
-    ### Install NodeJS & JS Tools
-    #####################################################
-    read -p "  [$counter] Do you want to install JS tools? (y/n) " -n 1 -r
+#####################################################
+### Install NodeJS
+#####################################################
+installNode() {
+    read -p "  [$counter] Do you want to install NodeJS & JS tools? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing JS tools & linters"
-	echo "  ==================================="
+	printInstallBanner "Installing JS tools & linters"
 
-	NODE_GLOBAL="jshint
-js-beautify
-eslint"
+	# install nodejs first
+	curl --silent --location https://rpm.nodesource.com/setup_4.x | bash -
+	
+	# now install npm packages
+	NODE_GLOBAL="js-beautify"
+
 
 	for N in $NODE_GLOBAL
 	do
 	    which $N >/dev/null 2>&1 && continue
 	    
 	    #weird problem pulling in this dependency
-	    [ "$N" == "jshint" ] && sudo npm install -g inherits
+	    #[ "$N" == "jshint" ] && npm install -g inherits
 	    
-	    sudo npm install -g $N
+	    npm -g install $N
 	done
     fi
     echo ""
 
+}
 
 
-
-    echo ""   
-    echo "--TOOLS"
-
-
-    #####################################################
-    ### Install Chrome
-    #####################################################
-    read -p "  [$counter] Do you want to install Chrome? (y/n) " -n 1 -r
+#####################################################
+### 
+#####################################################
+installChrome() {
+read -p "  [$counter] Do you want to install Chrome? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing Chrome"
-	echo "  ==================================="
+	printInstallBanner "Installing Chrome"
 
 	echo "Installing Google Chrome"
 	cd $HOME/Downloads
@@ -767,19 +801,19 @@ eslint"
 	cd $HOME
     fi
     echo ""
+}
 
 
-    #####################################################
-    ### Install Emacs    
-    #####################################################
-    read -p "  [$counter] Do you want to install emacs? (y/n) " -n 1 -r
+#####################################################
+### 
+#####################################################
+installEmacs() {
+
+        read -p "  [$counter] Do you want to install emacs? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	echo ""
-	echo "  ==================================="
-	echo "  === Installing emacs"
-	echo "  ==================================="
+	printInstallBanner "Installing emacs"
 
 	if [ ! -d ~/Downloads ] ; then
 	    mkdir ~/Downloads
@@ -798,11 +832,74 @@ eslint"
 
     fi
     echo ""
+    }
 
 
-    # #####################################################
-    # ### Install Git Hooks
-    # #####################################################
+
+
+
+
+
+#####################################################
+### Does all the heavy lifting of installing stuff
+#####################################################
+installAndConfigure() {
+    clear
+    counter=1
+
+    # Make sure we aren't running this with sudo or root
+    sudoCheck
+    rootCheck
+
+    # Print welcome info
+    printWelcome
+
+    # Install system 
+    printInstallHeading "SYSTEM"
+    addRepos
+    addRPMs
+
+    # Install database
+    printInstallHeading "DATABASE"
+    installCassandra
+    # installMigrate #not sure if we need this, also this needs go and git
+
+    # Install Go
+    printInstallHeading "GOLANG"
+    installGo
+    installGoLinters
+    installGoTools
+    installLucene #this need GOAPTH and common
+
+    # Install Git
+    printInstallHeading "GIT"
+    installGit
+    configureGit
+    generateSshKey
+
+    # Pull down Novetta stuff
+    printInstallHeading "NOVETTA"
+    installNovettaRepos
+    configureOpt
+
+    # Install js
+    printInstallHeading "JAVASCRIPT"
+    installNode
+
+    # Install tools
+    printInstallHeading "TOOLS"
+    installChrome
+    installEmacs
+
+
+
+
+
+
+    
+    # #=====================
+    # # Install Git Hooks
+    # #=====================
     #     read -p "  [$counter] Do you want to install git hooks? (y/n) " -n 1 -r
     # counter=$((counter+1)) 
 
@@ -824,10 +921,9 @@ eslint"
     # fi
     # echo ""
 
+  
 
-    #####################################################
-    ### Enhance the bash prompt
-    #####################################################
+    # Enhance the bash prompt
     #     read -p "Do you want to enhance the bash prompt? (y/n) " -n 1 -r
     #     if [[ $REPLY =~ ^[Yy]$ ]] ; then
     # 	echo ""
@@ -866,10 +962,10 @@ eslint"
     # EOF
     # )
     # 	echo "" >> ~/.bashrc
-    # 	echo "#######################################################" >> ~/.bashrc
+    # 	echo "#=====================##" >> ~/.bashrc
     # 	echo "# New Git Enhanced Bash Prompt" >> ~/.bashrc
     # 	echo "$NEW_PS1" >> ~/.bashrc
-    # 	echo "#######################################################" >> ~/.bashrc
+    # 	echo "#=====================##" >> ~/.bashrc
     #     fi
     #     echo ""
 
@@ -893,16 +989,10 @@ eslint"
     # cd $HOME
 
 
-    #####################################################
-    ### Install JS/ExtJS
-    #####################################################
+    # Install JS/ExtJS
 
 
     
-
-
-
-
     echo ""
     exit 1
 }
