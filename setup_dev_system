@@ -926,7 +926,7 @@ installAndConfigure() {
     # Install database
     printInstallHeading "DATABASE"
     installCassandra
-    # installMigrate #not sure if we need this, also this needs go and git
+    installMigrate #not sure if we need this, also this needs go and git
 
     # Install Git
     printInstallHeading "GIT"
