@@ -12,6 +12,9 @@
 # make sure the ext library is linked in the right place
 # configure emacs
 
+# Install NPM
+
+
 
 
 # Default colors
@@ -430,7 +433,7 @@ installLucene() {
 	else
 	    sudo cp $NOVAHOME/common/lucene/cassandra-lucene-index-plugin* /usr/share/cassandra/lib/
 	    sudo chown cassandra:cassandra /usr/share/cassandra/lib/cassandra-lucene-index-plugin*
-	    sudo systemctl enable cassandra
+	    sudo service cassandra restart
 	fi
     fi
     echo ""
@@ -894,7 +897,7 @@ read -p "  [$counter] Do you want to install Sencha Cmd? (y/n) " -n 1 -r
 
 	cmdVersion="6.1.3"
 	fileStr="SenchaCmd-$cmdVersion-linux-amd64.sh"
-	cmdUrl="cdn.sencha.com/cmd/$cmdVersion/no-jre/$fileStr"
+	cmdUrl="cdn.sencha.com/cmd/$cmdVersion/no-jre/$fileStr.zip"
 
 	cd ~/Downloads
 	wget $cmdUrl
