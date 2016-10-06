@@ -335,6 +335,7 @@ addRPMs() {
 	    giflib-utils
 	    git
 	    gtk2-devel
+	    ImageMagick
 	    libjpeg
 	    libjpeg-turbo
 	    libjpeg-turbo-devel
