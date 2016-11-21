@@ -5,14 +5,14 @@
 
 ### TO DO LIST
 # 
-# offer to create GOPATH if not found
-# make sure IP tables is disabled
-# check to see if submodules need to be updated/synced
-# install sencha
-# make sure the ext library is linked in the right place
-# configure emacs
-
-# Install NPM
+# 1. Add the Datastax repo to the list of repos you install dummy
+# 2. offer to create GOPATH if not found
+# 3. make sure IP tables is disabled
+# 4. check to see if submodules need to be updated/synced
+# 5. install sencha
+# 6. make sure the ext library is linked in the right place
+# 7. configure emacs
+# 8. Install NPM
 
 
 
@@ -339,6 +339,7 @@ addRPMs() {
 	    libjpeg
 	    libjpeg-turbo
 	    libjpeg-turbo-devel
+	    libstdc++
 	    libtiff
 	    libtiff-devel
 	    libtool
@@ -406,7 +407,7 @@ installCassandra() {
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	printInstallBanner "Installing Cassandra 2.2.3"
 
-	EXCLUDE_STR="exclude=cassandra22-2.2.4* dsc22-2.2.4* cassandra22-tools-2.2.4* cassandra22-2.2.5* dsc22-2.2.5* cassandra22-tools-2.2.5*" 
+	EXCLUDE_STR="exclude=cassandra22-2.2.4* dsc22-2.2.4* cassandra22-tools-2.2.4* cassandra22-2.2.5* dsc22-2.2.5* cassandra22-tools-2.2.5* cassandra22-2.2.6* dsc22-2.2.6* cassandra22-tools-2.2.6* cassandra22-2.2.7* dsc22-2.2.7* cassandra22-tools-2.2.7 cassandra22-2.2.8* dsc22-2.2.8* cassandra22-tools-2.2.8*" 
 	sudo echo $EXCLUDE_STR >> /etc/yum.conf
 	sudo yum install -y cassandra22.noarch cassandra22-tools.noarch
 	echo ""
