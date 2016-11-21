@@ -4,10 +4,6 @@
 
 
 ### TO DO LIST
-# 
-# 1. Add the Datastax repo to the list of repos you install dummy
-# 2. offer to create GOPATH if not found
-# 3. make sure IP tables is disabled
 # 4. check to see if submodules need to be updated/synced
 # 5. install sencha
 # 6. make sure the ext library is linked in the right place
@@ -16,9 +12,18 @@
 
 
 ### NOTES
-#
-# The Git install should appear before the request to pull
-# down migrate, since it will use git to do it.
+# Also there is a problem with the configuration settings for Git
+
+# Make a note about having to setup your ssh keys before you try
+# to pull down the novetta repos, please
+
+# Also, can't create the production directories until Novetta stuff
+# has been pulled down
+
+# Also can't install lucene until Common is in
+
+# Finally node isn't installing correctly. Maybe sudo issue? maybe global?
+
 
 
 
@@ -27,6 +32,8 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLACK='\033[0;30m'
 
+# The location in the user's home directory where Go stuff lives
+DEV_DIR_NAME="dev"
 
 CUR_USER=`who am i | awk '{print $1}'`
 
@@ -410,9 +417,31 @@ addRPMs() {
 	done
 
 	echo ""
+	
     fi
     echo ""   
 
+}
+
+
+#####################################################
+### Disable firewall
+#####################################################
+disableFirewall() {
+    read -p "  [$counter] Do you want to disable iptables? (y/n) " -n 1 -r
+    counter=$((counter+1)) 
+
+    if [[ $REPLY =~ ^[Yy]$ ]] ; then
+	printInstallBanner "Disabling iptables & ip6tables"
+
+	sudo service iptables stop
+	sudo service ip6tables stop
+
+	sudo chkconfig iptables off
+	sudo chkconfig ip6tables off
+	
+    fi
+    echo ""
 }
 
 
@@ -478,6 +507,37 @@ installLucene() {
 
 
 #####################################################
+### Install Custom RPMs
+#####################################################
+installCustomRPMs() {
+    read -p "  [$counter] Do you want to install our cusomt RPMs? (y/n) " -n 1 -r
+    counter=$((counter+1)) 
+
+    if [[ $REPLY =~ ^[Yy]$ ]] ; then
+	printInstallBanner "Installing Custom RPMs"
+
+	NOVAHOME=$GOPATH/src/github.com/Novetta
+	CUSTOM_PATH=$NOVAHOME/common/bin
+
+	sudo yum install rpm-build
+	sudo yum install redhat-rpm-config
+	
+	mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+	echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
+	
+	# Eventually build a loop to iterate through everything
+	# but for now, just pick out what we need
+	cd $CUSTOM_PATH
+	./jenkins-eventqueue
+	sudo yum install ~/rpmbuild/RPMS/x86_64/eventqueue-*.x86_64.rpm
+	sudo chkconfig eventqueue on
+	cd -
+    fi
+    echo ""
+}
+
+
+#####################################################
 ### Install Migrate Tool (might not need this anymore)
 #####################################################
 installMigrate() {
@@ -505,7 +565,6 @@ installGo() {
 	printInstallBanner "Installing Go"
 
 	# Setup the Go Dev directory structure
-	DEV_DIR_NAME="dev"
 	mkdir ~/$DEV_DIR_NAME
 	cd  ~/$DEV_DIR_NAME
 	mkdir bin pkg src
@@ -522,6 +581,8 @@ installGo() {
 	GOVER=1.6.1
 	wget "https://storage.googleapis.com/golang/go$GOVER.linux-amd64.tar.gz"
 	sudo tar -C /usr/local -xzf go$GOVER.linux-amd64.tar.gz
+
+	# I probably can get rid of this
 	echo "export GOPATH=$GOPATH" | tee -a $HOME/.env
 	source $HOME/.env
 	cd $HOME
@@ -558,10 +619,7 @@ installGoTools() {
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	printInstallBanner "Pulling down the Golang Tools"
-
-	cd ~/$DEV_DIR_NAME
 	go get golang.org/x/tools/cmd/...
-	cd $MY_CUR_DIR
     fi
     echo ""
 }
@@ -709,18 +767,13 @@ installNovettaRepos() {
 	echo "This might take a while..."
 
 	NOVA_REPOS=(VideoEnterprise
-		    pwcop
-		    namegen
-		    SSE
-		    goldap
-		    GoSearchService
-		    gmf
-		    perseus
-		    aide
+		    common
+		    fbncjs
 		    gokerb
-		    gocql
-		    kerbproxy
-		    asn1)
+		    goldap
+		    ITK
+		    kerbproxy)
+		    
 
 	cd ~/$DEV_DIR_NAME
 	
@@ -911,7 +964,7 @@ read -p "  [$counter] Do you want to configure Bash to handle Git? (y/n) " -n 1 
     }
 
     function _prompt_command() {
-        PS1="`_git_prompt`"'[\\u \\t \\[\\033[0;34m\\]\\w\\[\\033[0;30m\\]]\\$\\[\\e[0m\\] '
+        PS1="`_git_prompt`"'[\[\033[0;36m\]\u$ \t \[\033[0;34m\]\w\[\033[0;30m\]]\$\[\e[0m\] '
     }
     PROMPT_COMMAND=_prompt_command
 EOF
@@ -966,12 +1019,8 @@ installAndConfigure() {
     printInstallHeading "SYSTEM"
     addRepos
     addRPMs
-
-    # Install database
-    printInstallHeading "DATABASE"
-    installCassandra
-    installMigrate #not sure if we need this, also this needs go and git
-
+    disableFirewall
+    
     # Install Git
     printInstallHeading "GIT"
     installGit
@@ -984,11 +1033,17 @@ installAndConfigure() {
     installGoLinters
     installGoTools
 
+    # Install database
+    printInstallHeading "DATABASE"
+    installCassandra
+    installMigrate
+    
     # Pull down Novetta stuff
     printInstallHeading "NOVETTA"
     installNovettaRepos
     configureOpt
     installLucene #this need GOAPTH and common
+    installCustomRPMs #this need GOAPTH and common
 
     # Install js
     printInstallHeading "JAVASCRIPT"
