@@ -300,10 +300,9 @@ addRepos() {
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	printInstallBanner "Installing the extra repos"
 
-	echo " Installing EPEL, Remi and RPM Forge..."
+	echo " Installing EPEL, Remi and Datastax..."
 	sudo rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
 	sudo rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
-	sudo rpm -Uvh http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
 
 	# Install Datastax differently because they are special snowflakes
 	TEMP_LOC="/tmp/datastax.repo"
@@ -510,13 +509,15 @@ installGo() {
 	mkdir ~/$DEV_DIR_NAME
 	cd  ~/$DEV_DIR_NAME
 	mkdir bin pkg src
+
 	echo "# Go Environment Variables" >> ~/.bashrc
 	echo "export GOPATH=$HOME/$DEV_DIR_NAME" >> ~/.bashrc
 	echo "export GOBIN=\$GOPATH/bin" >> ~/.bashrc
 	echo "export GOROOT=/usr/local/go" >> ~/.bashrc
 	echo "" >> ~/.bashrc
-	echo "export PATH=$PATH:$GOBIN" >> ~/.bashrc
+	echo "export PATH=$PATH:$GOBIN:$GOROOT/bin" >> ~/.bashrc
 
+	source ~/.bashrc
 	cd $HOME/Downloads
 	GOVER=1.6.1
 	wget "https://storage.googleapis.com/golang/go$GOVER.linux-amd64.tar.gz"
@@ -618,7 +619,7 @@ configureGit() {
 
 	    while true; do
 		echo "You entered: $USER_EMAIL"
-		read -p "  [$counter] Is this correct? (y/n) " yn
+		read -p "  Is this correct? (y/n) " yn
 		case $yn in
 		    
 		    [Yy]* ) break;;
