@@ -411,6 +411,7 @@ addRPMs() {
 	    openssl-devel
 	    perl-ExtUtils-MakeMaker
 	    pkgconfig
+	    uuid-devel
 	    xclip
 	    yasm
 	    zeromq
@@ -522,16 +523,18 @@ installLucene() {
 #####################################################
 ### Install Custom RPMs
 #####################################################
-installCustomRPMs() {
+installCoreDependencies() {
     read -p "  [$counter] Do you want to install our custom RPMs? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	printInstallBanner "Installing Custom RPMs"
+	printInstallBanner "Installing Core Dependencies"
 
 	NOVAHOME=$GOPATH/src/github.com/Novetta
 	CUSTOM_PATH=$NOVAHOME/common/bin
 
+	
+	### Install the RPM tools
 	# Need rpm-build
 	if ! isInstalled rpm-build ; then
 	    sudo yum install -y rpm-build
@@ -544,10 +547,24 @@ installCustomRPMs() {
 	
 	mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 	echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
+
 	
-	# Eventually build a loop to iterate through everything
-	# but for now, just pick out what we need
+	### Build needed core libraries
+	cd /tmp
+	ZMQNAME="zeromq-4.1.3"
+	ZMQFILE="$ZMQNAME.tar.gz"
+	wget https://archive.org/download/zeromq_4.1.3/zeromq-4.1.3.tar.gz
+	tar -xzf $ZMQFILE
+	cd $ZMQNAME
+	./configure
+	make
+	sudo make install
+	sudo sh -c 'echo /usr/local/lib > /etc/ld.so.conf.d/local.conf'
+	sudo ldconfig
+	
+	### Build our own RPMs and install them
 	cd $CUSTOM_PATH
+	# Eventually build a loop to iterate through everything	but for now, just pick out what we need
 	./jenkins-eventqueue
 	sudo yum install -y ~/rpmbuild/RPMS/x86_64/eventqueue-*.x86_64.rpm
 	sudo chkconfig eventqueue on
@@ -1072,7 +1089,7 @@ installAndConfigure() {
     installNovettaRepos
     configureOpt
     installLucene #this need GOAPTH and common
-    installCustomRPMs #this need GOAPTH and common
+    installCoreDependencies #this need GOAPTH and common
 
     # Install js
     printInstallHeading "JAVASCRIPT"
