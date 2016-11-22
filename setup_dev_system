@@ -24,7 +24,7 @@
 
 # Finally node isn't installing correctly. Maybe sudo issue? maybe global?
 
-
+# So apparently I need github.com/pebbe/zmq4 as well too
 
 
 # Default colors
@@ -89,6 +89,18 @@ checkForBin() {
         printf "  [SUCCESS] - $1 ($BIN_VERSION)\n"
     else
         printf "  [FAILURE] - $1 not found!\n"
+    fi
+}
+
+
+#####################################################
+### Checks if an rpm is installed
+#####################################################
+isInstalled() {
+    if yum list installed "$@" >/dev/null 2>&1; then
+	true
+    else
+	false
     fi
 }
 
@@ -494,7 +506,7 @@ installLucene() {
 
 	NOVAHOME=$GOPATH/src/github.com/Novetta
 	LUCENE_PATH=$NOVAHOME/common/lucene/cassandra-lucene-index-plugin* 
-	if [ ! -f $LUCENE_PATH ] ; then
+	if ! [[ -f $LUCENE_PATH ]] ; then
 	    echo "WARNING! Lucene not found. Check in $GOPATH/common/lucene for the jar file"
 	else
 	    sudo cp $NOVAHOME/common/lucene/cassandra-lucene-index-plugin* /usr/share/cassandra/lib/
@@ -510,7 +522,7 @@ installLucene() {
 ### Install Custom RPMs
 #####################################################
 installCustomRPMs() {
-    read -p "  [$counter] Do you want to install our cusomt RPMs? (y/n) " -n 1 -r
+    read -p "  [$counter] Do you want to install our custom RPMs? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
@@ -519,8 +531,13 @@ installCustomRPMs() {
 	NOVAHOME=$GOPATH/src/github.com/Novetta
 	CUSTOM_PATH=$NOVAHOME/common/bin
 
-	sudo yum install rpm-build
-	sudo yum install redhat-rpm-config
+	if ! [ isInstalled rpm-build ]; then
+	    sudo yum install -y rpm-build
+	fi
+
+	if ! [ isInstalled redhat-rpm-config ]; then
+	    sudo yum install -y redhat-rpm-config
+	fi
 	
 	mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 	echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
@@ -529,7 +546,7 @@ installCustomRPMs() {
 	# but for now, just pick out what we need
 	cd $CUSTOM_PATH
 	./jenkins-eventqueue
-	sudo yum install ~/rpmbuild/RPMS/x86_64/eventqueue-*.x86_64.rpm
+	sudo yum install -y ~/rpmbuild/RPMS/x86_64/eventqueue-*.x86_64.rpm
 	sudo chkconfig eventqueue on
 	cd -
     fi
@@ -546,19 +563,22 @@ installMigrate() {
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	printInstallBanner "Installing Migrate"
-
 	go get -u github.com/mattes/migrate
-
+	cd $GOPATH/src/github.com/mattes/migrate
+	git checkout master
+	cd -
     fi
     echo ""
 }
 
 
 #####################################################
-### Install Go 1.6.1
+### Install Go
 #####################################################
 installGo() {
-    read -p "  [$counter] Do you want to install Go? (y/n) " -n 1 -r
+    GOVER=1.6.1
+    
+    read -p "  [$counter] Do you want to install Go $GOVER? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
@@ -578,7 +598,7 @@ installGo() {
 
 	source ~/.bashrc
 	cd $HOME/Downloads
-	GOVER=1.6.1
+
 	wget "https://storage.googleapis.com/golang/go$GOVER.linux-amd64.tar.gz"
 	sudo tar -C /usr/local -xzf go$GOVER.linux-amd64.tar.gz
 
@@ -743,7 +763,8 @@ generateSshKey() {
 	done
 
 	ssh-keygen -t rsa -b 4096 -C $USER_EMAIL
-	eval $(ssh-agent -s)
+
+	echo "Adding id_rsa to the ssh agent"
 	ssh-add ~/.ssh/id_rsa
 
 	echo "Be sure to visit https://github.com/settings/ssh to enter this ssh key."
@@ -772,6 +793,7 @@ installNovettaRepos() {
 		    gokerb
 		    goldap
 		    ITK
+		    KLE
 		    kerbproxy)
 		    
 
@@ -782,7 +804,7 @@ installNovettaRepos() {
 	for repo in "${NOVA_REPOS[@]}"
 	do
 	    echo "--------------------------"
-	    echo "> INSTALLING REPO $repo"
+	    echo "> Installing $repo"
 	    go get github.com/Novetta/$repo
 	    cd $GOPATH/src/github.com/Novetta/$repo
 	    echo "> UPDATING REPO"
