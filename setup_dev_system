@@ -505,13 +505,14 @@ installLucene() {
 	printInstallBanner "Installing Lucene"
 
 	NOVAHOME=$GOPATH/src/github.com/Novetta
-	LUCENE_PATH=$NOVAHOME/common/lucene/cassandra-lucene-index-plugin* 
-	if ! [[ -f $LUCENE_PATH ]] ; then
-	    echo "WARNING! Lucene not found. Check in $GOPATH/common/lucene for the jar file"
-	else
+	LUCENE_FILES=$NOVAHOME/common/lucene/cassandra-lucene-index-plugin* 
+
+	if ls $LUCENE_FILES 1> /dev/null 2>&1; then
 	    sudo cp $NOVAHOME/common/lucene/cassandra-lucene-index-plugin* /usr/share/cassandra/lib/
 	    sudo chown cassandra:cassandra /usr/share/cassandra/lib/cassandra-lucene-index-plugin*
 	    sudo service cassandra restart
+	else
+	    echo "WARNING! Lucene not found. Check in $GOPATH/common/lucene for the jar file"
 	fi
     fi
     echo ""
@@ -531,11 +532,13 @@ installCustomRPMs() {
 	NOVAHOME=$GOPATH/src/github.com/Novetta
 	CUSTOM_PATH=$NOVAHOME/common/bin
 
-	if ! [ isInstalled rpm-build ]; then
+	# Need rpm-build
+	if ! isInstalled rpm-build ; then
 	    sudo yum install -y rpm-build
 	fi
 
-	if ! [ isInstalled redhat-rpm-config ]; then
+	# Need redhat-rpm-config too
+	if ! isInstalled redhat-rpm-config ; then
 	    sudo yum install -y redhat-rpm-config
 	fi
 	
@@ -787,8 +790,7 @@ installNovettaRepos() {
 	echo ""
 	echo "This might take a while..."
 
-	NOVA_REPOS=(VideoEnterprise
-		    common
+	NOVA_REPOS=(common
 		    fbncjs
 		    gokerb
 		    goldap
@@ -815,7 +817,12 @@ installNovettaRepos() {
 
 	done
 
+	# Pull down some misc github stuff
+	go get -u github.com/pebbe/zmq4
+
+	
     fi
+    
     echo ""
 }
 
