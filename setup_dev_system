@@ -444,30 +444,29 @@ installCassandra() {
     read -p "  [$counter] Do you want to install Cassandra 2.2.3? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
-    # Disable some IPV6 stuff that gives cassandra pains
-    sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
-    sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
-
-    # If Datastax repo hasn't been installed, do it now
-    if [[ ! -f /etc/yum.repos.d/datastax.repo ]] ; then
-
-	TEMP_LOC="/tmp/datastax.repo"
-	touch $TEMP_LOC
-
-	echo "[datastax]" >> $TEMP_LOC
-	echo "name = DataStax Repo for Apache Cassandra" >> $TEMP_LOC
-	echo "baseurl = https://rpm.datastax.com/community" >> $TEMP_LOC
-	echo "enabled = 1" >> $TEMP_LOC
-	echo "gpgcheck = 0" >> $TEMP_LOC
-
-	sudo mv $TEMP_LOC /etc/yum.repos.d/datastax.repo
-    fi
-
-
-    
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	printInstallBanner "Installing Cassandra 2.2.3"
 
+	# Disable some IPV6 stuff that gives cassandra pains
+	sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+	sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
+
+	# If Datastax repo hasn't been installed, do it now
+	if [[ ! -f /etc/yum.repos.d/datastax.repo ]] ; then
+
+	    TEMP_LOC="/tmp/datastax.repo"
+	    touch $TEMP_LOC
+	    
+	    echo "[datastax]" >> $TEMP_LOC
+	    echo "name = DataStax Repo for Apache Cassandra" >> $TEMP_LOC
+	    echo "baseurl = https://rpm.datastax.com/community" >> $TEMP_LOC
+	    echo "enabled = 1" >> $TEMP_LOC
+	    echo "gpgcheck = 0" >> $TEMP_LOC
+	    
+	    sudo mv $TEMP_LOC /etc/yum.repos.d/datastax.repo
+	fi
+
+	# Add exclude string
 	sudo sh -c 'echo "exclude=cassandra22-2.2.4* dsc22-2.2.4* cassandra22-tools-2.2.4* cassandra22-2.2.5* dsc22-2.2.5* cassandra22-tools-2.2.5* cassandra22-2.2.6* dsc22-2.2.6* cassandra22-tools-2.2.6* cassandra22-2.2.7* dsc22-2.2.7* cassandra22-tools-2.2.7 cassandra22-2.2.8* dsc22-2.2.8* cassandra22-tools-2.2.8*"  >> /etc/yum.conf'
 
 	sudo yum install -y cassandra22.noarch cassandra22-tools.noarch
