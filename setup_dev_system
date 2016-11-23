@@ -1,30 +1,11 @@
 #!/bin/bash
 
 
-
-
-### TO DO LIST
-# 4. check to see if submodules need to be updated/synced
-# 5. install sencha
-# 6. make sure the ext library is linked in the right place
-# 7. configure emacs
-# 8. Install NPM
-
-
-### NOTES
-# Also there is a problem with the configuration settings for Git
-
-# Make a note about having to setup your ssh keys before you try
-# to pull down the novetta repos, please
-
-# Also, can't create the production directories until Novetta stuff
-# has been pulled down
-
-# Also can't install lucene until Common is in
-
-# Finally node isn't installing correctly. Maybe sudo issue? maybe global?
-
-# So apparently I need github.com/pebbe/zmq4 as well too
+### Things that must still be done manually
+# 1. copy your public key into github
+# 2. download and install zeromq
+# 3. download and install eventqueue
+# 4. download and install the ext directory
 
 
 # Default colors
@@ -414,8 +395,6 @@ addRPMs() {
 	    uuid-devel
 	    xclip
 	    yasm
-	    zeromq
-	    zeromq-devel
 	    zlib-devel
 	)
 
@@ -465,8 +444,13 @@ installCassandra() {
     read -p "  [$counter] Do you want to install Cassandra 2.2.3? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
+    # Disable some IPV6 stuff that gives cassandra pains
+    sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+    sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
+
     # If Datastax repo hasn't been installed, do it now
     if [[ ! -f /etc/yum.repos.d/datastax.repo ]] ; then
+
 	TEMP_LOC="/tmp/datastax.repo"
 	touch $TEMP_LOC
 
@@ -530,23 +514,23 @@ installCoreDependencies() {
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	printInstallBanner "Installing Core Dependencies"
 
-	NOVAHOME=$GOPATH/src/github.com/Novetta
-	CUSTOM_PATH=$NOVAHOME/common/bin
+	# NOVAHOME=$GOPATH/src/github.com/Novetta
+	# CUSTOM_PATH=$NOVAHOME/common/bin
 
 	
-	### Install the RPM tools
-	# Need rpm-build
-	if ! isInstalled rpm-build ; then
-	    sudo yum install -y rpm-build
-	fi
+	# ### Install the RPM tools
+	# # Need rpm-build
+	# if ! isInstalled rpm-build ; then
+	#     sudo yum install -y rpm-build
+	# fi
 
-	# Need redhat-rpm-config too
-	if ! isInstalled redhat-rpm-config ; then
-	    sudo yum install -y redhat-rpm-config
-	fi
+	# # Need redhat-rpm-config too
+	# if ! isInstalled redhat-rpm-config ; then
+	#     sudo yum install -y redhat-rpm-config
+	# fi
 	
-	mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-	echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
+	# mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+	# echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
 
 	
 	### Build needed core libraries
@@ -564,24 +548,24 @@ installCoreDependencies() {
 	# cd -
 	
 	# now we can build zeromq
-	cd /tmp
-	ZMQ="zeromq-4.1.3"
-	wget https://archive.org/download/zeromq_4.1.3/$ZMQ.tar.gz
-	tar -xzf $ZMQ.tar.gz
-	cd $ZMQ
-	./configure --with-libsodium=no
-	make
-	sudo make install
-	sudo sh -c 'echo /usr/local/lib > /etc/ld.so.conf.d/local.conf'
-	sudo ldconfig
+	# cd /tmp
+	# ZMQ="zeromq-4.1.3"
+	# wget https://archive.org/download/zeromq_4.1.3/$ZMQ.tar.gz
+	# tar -xzf $ZMQ.tar.gz
+	# cd $ZMQ
+	# ./configure --with-libsodium=no
+	# make
+	# sudo make install
+	# sudo sh -c 'echo /usr/local/lib > /etc/ld.so.conf.d/local.conf'
+	# sudo ldconfig
 	
-	### Build our own RPMs and install them
-	cd $CUSTOM_PATH
-	# Eventually build a loop to iterate through everything	but for now, just pick out what we need
-	./jenkins-eventqueue
-	sudo yum install -y ~/rpmbuild/RPMS/x86_64/eventqueue-*.x86_64.rpm
-	sudo chkconfig eventqueue on
-	cd -
+	# ### Build our own RPMs and install them
+	# cd $CUSTOM_PATH
+	# # Eventually build a loop to iterate through everything	but for now, just pick out what we need
+	# ./jenkins-eventqueue
+	# sudo yum install -y ~/rpmbuild/RPMS/x86_64/eventqueue-*.x86_64.rpm
+	# sudo chkconfig eventqueue on
+	# cd -
     fi
     echo ""
 }
@@ -812,6 +796,9 @@ generateSshKey() {
 ### Pull down the Novetta repos
 #####################################################
 installNovettaRepos() {
+    # Important note! You have to have the ssh keys created
+    # and github authorized for those keys before this will work.
+
     read -p "  [$counter] Do you want to install the Novetta repos? (y/n) " -n 1 -r
     counter=$((counter+1)) 
 
@@ -849,7 +836,25 @@ installNovettaRepos() {
 
 	# Pull down some misc github stuff
 	go get -u github.com/pebbe/zmq4
+	go get -u github.com/TomiHiltunen/geohash-golang
+	go get -u github.com/go-martini/martini
+	go get -u github.com/fatih/set
+	cd $GOPATH/src/github.com/fatih/set/
+	git checkout master
+	cd -
+	go get -u github.com/martini-contrib/encoder
+	go get -u github.com/martini-contrib/gzip
+	go get -u github.com/nfnt/resize
+	go get -u github.com/nlacey/go-cairo
+	go get -u github.com/paulmach/go.geojson
+	go get -u github.com/the42/cartconvert/cartconvert
 
+	# setup the environment variables correctly
+
+	# create the search tables
+	cd $GOPATH/src/github.com/Novetta/common/aide/search/setup
+	./updateDb.sh
+	cd -
 	
     fi
     
@@ -873,6 +878,9 @@ configureOpt() {
 	IFS=" "
 	OPT_FILES=($OPT_FILES_STR)
 
+	CUR_PERSON=`whoami`
+	CUR_GROUP=`groups`
+	
 	for key in "${!OPT_FILES[@]}" 
 	do 
 	    KEY_DIR="/opt/${OPT_FILES[$key]}"
@@ -889,6 +897,8 @@ configureOpt() {
 		sudo mkdir -m 755 $KEY_DIR
 	    fi
 
+	    sudo chown $CUR_PERSON:$CUR_GROUP
+	    
 	    #val="SUCCESS"
 	    #printf "%10s -[ %30s]\n" "$KEY_DIR" "$val"
 	    printf "[SUCCESS] %20s\n" "$KEY_DIR"
@@ -896,6 +906,8 @@ configureOpt() {
 
 	IFS=$OIFS
 
+
+	
     fi
     echo ""
 }
@@ -911,21 +923,14 @@ installNode() {
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	printInstallBanner "Installing JS tools & linters"
 
-	# install nodejs first
-	curl --silent --location https://rpm.nodesource.com/setup_4.x | bash -
+	sudo yum install -y nodejs
 	
 	# now install npm packages
 	NODE_GLOBAL="js-beautify"
 
-
 	for N in $NODE_GLOBAL
 	do
-	    which $N >/dev/null 2>&1 && continue
-	    
-	    #weird problem pulling in this dependency
-	    #[ "$N" == "jshint" ] && npm install -g inherits
-	    
-	    npm -g install $N
+	    sudo npm -g install $N
 	done
     fi
     echo ""
