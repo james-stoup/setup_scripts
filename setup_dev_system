@@ -606,11 +606,11 @@ installGo() {
 	mkdir bin pkg src
 
 	echo "# Go Environment Variables" >> ~/.bashrc
-	echo "export GOPATH=$HOME/$DEV_DIR_NAME" >> ~/.bashrc
+	echo "export GOPATH=\$HOME/\$DEV_DIR_NAME" >> ~/.bashrc
 	echo "export GOBIN=\$GOPATH/bin" >> ~/.bashrc
 	echo "export GOROOT=/usr/local/go" >> ~/.bashrc
 	echo "" >> ~/.bashrc
-	echo "export PATH=$PATH:$GOBIN:$GOROOT/bin" >> ~/.bashrc
+	echo "export PATH=$PATH:\$GOBIN:\$GOROOT/bin" >> ~/.bashrc
 
 	source ~/.bashrc
 	cd $HOME/Downloads
@@ -636,7 +636,7 @@ installGoLinters() {
     counter=$((counter+1)) 
 
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
-	printInstallBanner "Installing Go Lint"
+	printInstallBanner "Installing Go Lint (requires ssh key in github)"
 
 	# TODO - put a check in to make sure GOPATH is set
 	go get -u github.com/golang/lint/golint
@@ -656,6 +656,9 @@ installGoTools() {
     if [[ $REPLY =~ ^[Yy]$ ]] ; then
 	printInstallBanner "Pulling down the Golang Tools"
 	go get golang.org/x/tools/cmd/...
+	go get github.com/rogpeppe/godef
+	go get -u github.com/nsf/gocode
+	go get golang.org/x/tools/cmd/goimports
     fi
     echo ""
 }
@@ -847,6 +850,7 @@ installNovettaRepos() {
 	go get -u github.com/nlacey/go-cairo
 	go get -u github.com/paulmach/go.geojson
 	go get -u github.com/the42/cartconvert/cartconvert
+	go get github.com/tealeg/xlsx 
 
 	# setup the environment variables correctly
 
@@ -896,7 +900,7 @@ configureOpt() {
 		sudo mkdir -m 755 $KEY_DIR
 	    fi
 
-	    sudo chown $CUR_PERSON:$CUR_GROUP
+	    sudo chown $CUR_PERSON:$CUR_GROUP $KEY_DIR
 	    
 	    #val="SUCCESS"
 	    #printf "%10s -[ %30s]\n" "$KEY_DIR" "$val"
@@ -923,6 +927,7 @@ installNode() {
 	printInstallBanner "Installing JS tools & linters"
 
 	sudo yum install -y nodejs
+	sudo yum install -y npm
 	
 	# now install npm packages
 	NODE_GLOBAL="js-beautify"
@@ -1027,7 +1032,7 @@ read -p "  [$counter] Do you want to configure Bash to handle Git? (y/n) " -n 1 
     }
 
     function _prompt_command() {
-        PS1="`_git_prompt`"'[\[\033[0;36m\]\u$ \t \[\033[0;34m\]\w\[\033[0;30m\]]\$\[\e[0m\] '
+        PS1="`_git_prompt`"'[\\[\\033[0;36m\\]\\u$ \\t \\[\\033[0;34m\\]\\w\\[\\033[0;30m\\]]\\$\\[\\e[0m\\] '
     }
     PROMPT_COMMAND=_prompt_command
 EOF
